@@ -424,8 +424,11 @@ class ImageExtractor {
     }
 
     async getImageInfo(imageUrl) {
+        console.log('🔍 Getting image info for:', imageUrl);
+        
         try {
             // Method 1: Try direct HEAD request first
+            console.log('📡 Method 1: Trying direct HEAD request...');
             const directResponse = await fetch(imageUrl, { 
                 method: 'HEAD',
                 mode: 'cors',
@@ -437,6 +440,7 @@ class ImageExtractor {
                 const contentType = directResponse.headers.get('content-type');
                 
                 if (contentLength) {
+                    console.log('✅ Direct method succeeded:', this.formatFileSize(parseInt(contentLength)));
                     return {
                         size: this.formatFileSize(parseInt(contentLength)),
                         format: this.getImageFormat(imageUrl),
@@ -445,11 +449,12 @@ class ImageExtractor {
                 }
             }
         } catch (error) {
-            console.warn('Direct fetch failed:', error.message);
+            console.warn('❌ Direct fetch failed:', error.message);
         }
 
         try {
             // Method 2: Try with AllOrigins proxy
+            console.log('📡 Method 2: Trying AllOrigins proxy...');
             const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(imageUrl)}`;
             const response = await fetch(proxyUrl, { 
                 method: 'HEAD',
@@ -461,6 +466,7 @@ class ImageExtractor {
                 const contentType = response.headers.get('content-type');
                 
                 if (contentLength) {
+                    console.log('✅ AllOrigins method succeeded:', this.formatFileSize(parseInt(contentLength)));
                     return {
                         size: this.formatFileSize(parseInt(contentLength)),
                         format: this.getImageFormat(imageUrl),
@@ -469,11 +475,12 @@ class ImageExtractor {
                 }
             }
         } catch (error) {
-            console.warn('AllOrigins proxy failed:', error.message);
+            console.warn('❌ AllOrigins proxy failed:', error.message);
         }
 
         try {
             // Method 3: Try with CORS Anywhere proxy
+            console.log('📡 Method 3: Trying CORS Anywhere proxy...');
             const corsProxyUrl = `https://cors-anywhere.herokuapp.com/${imageUrl}`;
             const response = await fetch(corsProxyUrl, { 
                 method: 'HEAD',
@@ -488,6 +495,7 @@ class ImageExtractor {
                 const contentType = response.headers.get('content-type');
                 
                 if (contentLength) {
+                    console.log('✅ CORS Anywhere method succeeded:', this.formatFileSize(parseInt(contentLength)));
                     return {
                         size: this.formatFileSize(parseInt(contentLength)),
                         format: this.getImageFormat(imageUrl),
@@ -496,15 +504,17 @@ class ImageExtractor {
                 }
             }
         } catch (error) {
-            console.warn('CORS Anywhere proxy failed:', error.message);
+            console.warn('❌ CORS Anywhere proxy failed:', error.message);
         }
 
         try {
             // Method 4: Try to estimate size from image dimensions
+            console.log('📡 Method 4: Trying size estimation from dimensions...');
             const dimensions = await this.getImageDimensions(imageUrl);
             if (dimensions.width !== 'Unknown' && dimensions.height !== 'Unknown') {
                 // Estimate file size based on dimensions and format
                 const estimatedSize = this.estimateImageSize(dimensions.width, dimensions.height, this.getImageFormat(imageUrl));
+                console.log('✅ Size estimation succeeded:', estimatedSize);
                 return {
                     size: estimatedSize,
                     format: this.getImageFormat(imageUrl),
@@ -512,10 +522,11 @@ class ImageExtractor {
                 };
             }
         } catch (error) {
-            console.warn('Size estimation failed:', error.message);
+            console.warn('❌ Size estimation failed:', error.message);
         }
 
         // Final fallback
+        console.log('❌ All methods failed, using fallback');
         return {
             size: 'Unknown (CORS restricted)',
             format: this.getImageFormat(imageUrl),
