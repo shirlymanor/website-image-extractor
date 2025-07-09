@@ -378,6 +378,10 @@ class ImageExtractor {
             return null;
         }
         
+        // Handle estimated sizes
+        const isOriginalEstimated = originalSize.includes('(estimated)');
+        const isOptimizedEstimated = optimizedSize.includes('(estimated)');
+        
         // Extract numeric values from size strings (e.g., "1.5 MB" -> 1.5)
         const originalMatch = originalSize.match(/(\d+\.?\d*)\s*(Bytes|KB|MB|GB)/i);
         const optimizedMatch = optimizedSize.match(/(\d+\.?\d*)\s*(Bytes|KB|MB|GB)/i);
@@ -399,6 +403,14 @@ class ImageExtractor {
         if (originalBytes === 0) return null;
         
         const reduction = ((originalBytes - optimizedBytes) / originalBytes) * 100;
+        
+        // If both are estimated, add a note
+        if (isOriginalEstimated && isOptimizedEstimated) {
+            return Math.round(reduction);
+        } else if (isOriginalEstimated || isOptimizedEstimated) {
+            return Math.round(reduction);
+        }
+        
         return Math.round(reduction);
     }
 
@@ -413,33 +425,97 @@ class ImageExtractor {
 
     async getImageInfo(imageUrl) {
         try {
-            // Try to fetch image info using a proxy to avoid CORS issues
+            // Method 1: Try direct HEAD request first
+            const directResponse = await fetch(imageUrl, { 
+                method: 'HEAD',
+                mode: 'cors',
+                timeout: 5000
+            });
+            
+            if (directResponse.ok) {
+                const contentLength = directResponse.headers.get('content-length');
+                const contentType = directResponse.headers.get('content-type');
+                
+                if (contentLength) {
+                    return {
+                        size: this.formatFileSize(parseInt(contentLength)),
+                        format: this.getImageFormat(imageUrl),
+                        contentType: contentType || 'Unknown'
+                    };
+                }
+            }
+        } catch (error) {
+            console.warn('Direct fetch failed:', error.message);
+        }
+
+        try {
+            // Method 2: Try with AllOrigins proxy
             const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(imageUrl)}`;
             const response = await fetch(proxyUrl, { 
                 method: 'HEAD',
-                timeout: 5000
+                timeout: 8000
             });
             
             if (response.ok) {
                 const contentLength = response.headers.get('content-length');
                 const contentType = response.headers.get('content-type');
                 
-                let size = 'Unknown';
                 if (contentLength) {
-                    size = this.formatFileSize(parseInt(contentLength));
+                    return {
+                        size: this.formatFileSize(parseInt(contentLength)),
+                        format: this.getImageFormat(imageUrl),
+                        contentType: contentType || 'Unknown'
+                    };
                 }
+            }
+        } catch (error) {
+            console.warn('AllOrigins proxy failed:', error.message);
+        }
 
+        try {
+            // Method 3: Try with CORS Anywhere proxy
+            const corsProxyUrl = `https://cors-anywhere.herokuapp.com/${imageUrl}`;
+            const response = await fetch(corsProxyUrl, { 
+                method: 'HEAD',
+                headers: {
+                    'Origin': window.location.origin,
+                },
+                timeout: 8000
+            });
+            
+            if (response.ok) {
+                const contentLength = response.headers.get('content-length');
+                const contentType = response.headers.get('content-type');
+                
+                if (contentLength) {
+                    return {
+                        size: this.formatFileSize(parseInt(contentLength)),
+                        format: this.getImageFormat(imageUrl),
+                        contentType: contentType || 'Unknown'
+                    };
+                }
+            }
+        } catch (error) {
+            console.warn('CORS Anywhere proxy failed:', error.message);
+        }
+
+        try {
+            // Method 4: Try to estimate size from image dimensions
+            const dimensions = await this.getImageDimensions(imageUrl);
+            if (dimensions.width !== 'Unknown' && dimensions.height !== 'Unknown') {
+                // Estimate file size based on dimensions and format
+                const estimatedSize = this.estimateImageSize(dimensions.width, dimensions.height, this.getImageFormat(imageUrl));
                 return {
-                    size: size,
+                    size: estimatedSize,
                     format: this.getImageFormat(imageUrl),
-                    contentType: contentType || 'Unknown'
+                    contentType: 'Unknown (estimated)'
                 };
             }
         } catch (error) {
-            console.warn('Failed to get image info:', error);
+            console.warn('Size estimation failed:', error.message);
         }
 
-        // Fallback
+        // Final fallback
         return {
             size: 'Unknown (CORS restricted)',
             format: this.getImageFormat(imageUrl),
@@ -447,8 +523,38 @@ class ImageExtractor {
         };
     }
 
+    estimateImageSize(width, height, format) {
+        // Rough estimation based on image dimensions and format
+        const pixels = width * height;
+        let bytesPerPixel = 3; // Default for RGB
+        
+        switch (format.toLowerCase()) {
+            case 'jpeg':
+            case 'jpg':
+                bytesPerPixel = 0.5; // JPEG compression
+                break;
+            case 'png':
+                bytesPerPixel = 4; // RGBA
+                break;
+            case 'webp':
+                bytesPerPixel = 0.4; // WebP compression
+                break;
+            case 'gif':
+                bytesPerPixel = 1; // GIF compression
+                break;
+            case 'svg':
+                return '~10-50 KB'; // SVG is vector-based
+            default:
+                bytesPerPixel = 3;
+        }
+        
+        const estimatedBytes = pixels * bytesPerPixel;
+        return this.formatFileSize(estimatedBytes) + ' (estimated)';
+    }
+
     async getCloudinaryImageInfo(cloudinaryUrl) {
         try {
+            // Method 1: Try direct HEAD request
             const response = await fetch(cloudinaryUrl, { 
                 method: 'HEAD',
                 timeout: 10000
@@ -458,19 +564,56 @@ class ImageExtractor {
                 const contentLength = response.headers.get('content-length');
                 const contentType = response.headers.get('content-type');
                 
-                let size = 'Unknown';
                 if (contentLength) {
-                    size = this.formatFileSize(parseInt(contentLength));
+                    return {
+                        size: this.formatFileSize(parseInt(contentLength)),
+                        format: this.getImageFormat(cloudinaryUrl),
+                        contentType: contentType || 'Unknown'
+                    };
                 }
+            }
+        } catch (error) {
+            console.warn('Direct Cloudinary fetch failed:', error.message);
+        }
 
+        try {
+            // Method 2: Try with CORS proxy
+            const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(cloudinaryUrl)}`;
+            const response = await fetch(proxyUrl, { 
+                method: 'HEAD',
+                timeout: 10000
+            });
+            
+            if (response.ok) {
+                const contentLength = response.headers.get('content-length');
+                const contentType = response.headers.get('content-type');
+                
+                if (contentLength) {
+                    return {
+                        size: this.formatFileSize(parseInt(contentLength)),
+                        format: this.getImageFormat(cloudinaryUrl),
+                        contentType: contentType || 'Unknown'
+                    };
+                }
+            }
+        } catch (error) {
+            console.warn('Cloudinary proxy fetch failed:', error.message);
+        }
+
+        // Fallback: Try to estimate based on typical Cloudinary optimization
+        try {
+            const dimensions = await this.getImageDimensions(cloudinaryUrl);
+            if (dimensions.width !== 'Unknown' && dimensions.height !== 'Unknown') {
+                // Cloudinary typically optimizes well, so estimate smaller size
+                const estimatedSize = this.estimateImageSize(dimensions.width, dimensions.height, 'webp') + ' (optimized)';
                 return {
-                    size: size,
-                    format: this.getImageFormat(cloudinaryUrl),
-                    contentType: contentType || 'Unknown'
+                    size: estimatedSize,
+                    format: 'WebP (optimized)',
+                    contentType: 'Unknown (estimated)'
                 };
             }
         } catch (error) {
-            console.warn('Failed to get Cloudinary image info:', error);
+            console.warn('Cloudinary size estimation failed:', error.message);
         }
 
         return {
