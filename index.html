@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Website Image Extractor</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌐 Website Image Extractor</h1>
+            <p>Extract and optimize images from any website using Cloudinary</p>
+        </header>
+
+        <div class="input-section">
+            <div class="url-input-container">
+                <input 
+                    type="url" 
+                    id="websiteUrl" 
+                    placeholder="Enter website URL (e.g., https://example.com)"
+                    class="url-input"
+                >
+                <button id="extractBtn" class="extract-btn">
+                    <span class="btn-text">Extract Images</span>
+                    <span class="loading-spinner" style="display: none;"></span>
+                </button>
+            </div>
+            
+            <div class="extraction-options">
+                <label class="toggle-container">
+                    <input type="checkbox" id="useBrowserToggle" checked>
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-label">Use Advanced Extraction (handles lazy loading)</span>
+                </label>
+                <div class="extraction-status" id="extractionStatus">
+                    <span class="status-indicator browser">🌐 Advanced extraction enabled</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="results-section" id="resultsSection" style="display: none;">
+            <div class="results-header">
+                <h2>Extracted Images</h2>
+                <div class="stats">
+                    <span id="imageCount">0</span> images found
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table id="imagesTable">
+                    <thead>
+                        <tr>
+                            <th>Original Image</th>
+                            <th>Optimized Image</th>
+                            <th>Image Details</th>
+                            <th>Size Comparison</th>
+                            <th>URLs</th>
+                        </tr>
+                    </thead>
+                    <tbody id="imagesTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="error-section" id="errorSection" style="display: none;">
+            <div class="error-message">
+                <h3>⚠️ Error</h3>
+                <p id="errorText"></p>
+            </div>
+        </div>
+
+        <div class="loading-section" id="loadingSection" style="display: none;">
+            <div class="loading-message">
+                <div class="loading-spinner"></div>
+                <p>Extracting images from website...</p>
+            </div>
+        </div>
+
+        <footer>
+            <p>Powered by <a href="https://cloudinary.com" target="_blank">Cloudinary</a> | 
+               <a href="https://github.com/yourusername/website-image-extractor" target="_blank">View on GitHub</a></p>
+        </footer>
+    </div>
+
+    <script src="script-static.js"></script>
+</body>
+</html> 

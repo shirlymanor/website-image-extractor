@@ -1,0 +1,32 @@
+{
+  "name": "website-image-extractor",
+  "version": "1.0.0",
+  "description": "A web application that extracts images from websites and displays them with Cloudinary optimization",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": [
+    "image-extraction",
+    "cloudinary",
+    "web-scraping",
+    "cors",
+    "image-optimization"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "extract-zip": "^2.0.1",
+    "jsdom": "^22.1.0",
+    "node-fetch": "^2.6.7"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
